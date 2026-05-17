@@ -1,0 +1,103 @@
+# ========================
+# Python
+# ========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+
+# ========================
+# Server
+# ========================
+server/.env
+server/xhs_creator.db
+server/uploads/garments/
+server/uploads/streets/
+server/uploads/tryon/
+server/uploads/edited/
+server/uploads/*.jpg
+
+# ========================
+# Flutter / Dart
+# ========================
+app/.dart_tool/
+app/.pub-cache/
+app/.pub/
+app/build/
+app/.flutter-plugins-dependencies
+app/.flutter-plugins
+app/*.iml
+app/android/.gradle/
+app/android/local.properties
+app/android/.idea/
+app/android/app/debug/
+app/android/app/profile/
+app/android/app/release/
+app/ios/Pods/
+app/ios/.symlinks/
+
+# ========================
+# IDE
+# ========================
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+
+# ========================
+# OS
+# ========================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ========================
+# Test artifacts
+# ========================
+screenshots/
+test_screenshots/
+test_images/
+*.png
+!app/web/icons/*.png
+!app/web/favicon.png
+!app/ios/Runner/Assets.xcassets/**/*.png
+!app/macos/Runner/Assets.xcassets/**/*.png
+!app/android/app/src/main/res/mipmap-*/*.png
+test_results.json
+mcp_test_results.json
+ui_positions.py
+
+# ========================
+# Meta-harness generated
+# ========================
+generated/
+memory/
+evolution/
+seeds/
+scripts/
+meta/
+templates/
+docs/
+
+# ========================
+# Misc
+# ========================
+*.log
+.trae/
+.cursorrules
+CLAUDE.md
+AGENTS.md
+META.md
+README_EN.md
+e2e_full_flow_test.py
+full_flow_test_final.py
+mcp_full_flow_test.py
+mcp_verified_test.py
+api_verify_test.py
