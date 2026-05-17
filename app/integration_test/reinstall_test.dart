@@ -21,14 +21,7 @@ Future<void> _w(WidgetTester tester, {int seconds = 2}) async {
 }
 
 Future<void> _refreshHome(WidgetTester tester) async {
-  final elements = find.byType(Scaffold).evaluate();
-  PostProvider? provider;
-  for (final el in elements) {
-    try {
-      provider = Provider.of<PostProvider>(el, listen: false);
-      break;
-    } catch (_) {}
-  }
+  final provider = _getPostProvider(tester);
   if (provider == null) return;
   provider.fetchPosts();
   await Future<void>.delayed(const Duration(seconds: 5));
@@ -39,16 +32,35 @@ Future<void> _refreshHome(WidgetTester tester) async {
   }
 }
 
+String get testServerIp => const String.fromEnvironment('TEST_SERVER_IP', defaultValue: '10.0.2.2:8000');
+String get baseUrl => 'http://$testServerIp';
+
+Future<void> _configureServerIp(WidgetTester tester) async {
+  debugPrint('  Configuring server IP: $testServerIp');
+  await tester.tap(find.byIcon(Icons.settings_outlined));
+  await _w(tester, seconds: 2);
+  await tester.tap(find.byType(TextField));
+  await _w(tester);
+  await tester.enterText(find.byType(TextField), testServerIp);
+  await _w(tester);
+  await tester.tap(find.widgetWithText(ElevatedButton, '保存'));
+  await _w(tester, seconds: 2);
+  expect(find.text('服务器地址已保存'), findsOneWidget);
+  debugPrint('  ✨ Server IP saved via UI');
+  await tester.tap(find.byIcon(Icons.arrow_back_ios));
+  await _w(tester, seconds: 3);
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  const testServerIp = '10.0.2.2:8000';
   const reinstallUsername = 'reinstall_test_user';
   const reinstallPassword = 'test123456';
 
   testWidgets('Reinstall Persistence Test', (tester) async {
     debugPrint('\n========================================');
     debugPrint('  Reinstall Persistence Test');
+    debugPrint('  Server IP: $testServerIp');
     debugPrint('  (Run AFTER full_flow_test + adb pm clear)');
     debugPrint('========================================\n');
 
@@ -130,18 +142,9 @@ void main() {
     expect(onHome, isTrue, reason: 'Should reach home screen after login');
     debugPrint('PASS: Logged in with previous account after reinstall');
 
-    // ===== Step 5: Configure Server IP =====
+    // ===== Step 5: Configure Server IP via UI =====
     debugPrint('\n========== Step 5: Configure Server IP ==========');
-    await tester.tap(find.byIcon(Icons.settings_outlined));
-    await _w(tester, seconds: 2);
-    await tester.tap(find.byType(TextField));
-    await _w(tester);
-    await tester.enterText(find.byType(TextField), testServerIp);
-    await _w(tester);
-    await tester.tap(find.widgetWithText(ElevatedButton, '保存'));
-    await _w(tester, seconds: 2);
-    await tester.tap(find.byIcon(Icons.arrow_back_ios));
-    await _w(tester, seconds: 3);
+    await _configureServerIp(tester);
     debugPrint('PASS: Server IP configured');
 
     // ===== Step 6: Verify Previous Posts Visible =====
@@ -182,6 +185,58 @@ void main() {
       await tester.tap(postCards.first);
       await _w(tester, seconds: 3);
 
+      // ===== Step 6.5: Copy to Clipboard After Reinstall =====
+      debugPrint('\n========== Step 6.5: Copy to Clipboard After Reinstall ==========');
+      final reinstallProvider = _getPostProvider(tester);
+      if (reinstallProvider != null && reinstallProvider.currentPost != null) {
+        final copyPost = reinstallProvider.currentPost!;
+
+        final appBarCopyBtn = find.byIcon(Icons.copy);
+        if (appBarCopyBtn.evaluate().isNotEmpty) {
+          debugPrint('  Tapping AppBar copy button after reinstall...');
+          await tester.tap(appBarCopyBtn.first);
+          await _w(tester, seconds: 2);
+
+          expect(find.text('已复制到剪贴板'), findsOneWidget,
+              reason: 'SnackBar should show after copy');
+          debugPrint('  ✨ SnackBar "已复制到剪贴板" displayed after reinstall');
+
+          final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+          expect(clipboardData, isNotNull, reason: 'Clipboard should have data');
+          expect(clipboardData!.text, isNotNull, reason: 'Clipboard text should not be null');
+          expect(clipboardData.text!.isNotEmpty, isTrue, reason: 'Clipboard text should not be empty');
+
+          final expectedText = _buildExpectedCopyText(copyPost.title, copyPost.content, copyPost.tags);
+          expect(clipboardData.text, equals(expectedText),
+              reason: 'Clipboard content should match post after reinstall');
+          debugPrint('  ✨ Clipboard content verified after reinstall: ${clipboardData.text!.length} chars');
+        }
+
+        await _w(tester, seconds: 2);
+
+        final bottomCopyBtn = find.byIcon(Icons.copy_outlined);
+        if (bottomCopyBtn.evaluate().isNotEmpty) {
+          debugPrint('  Tapping bottom bar copy button after reinstall...');
+          await tester.ensureVisible(bottomCopyBtn.first);
+          await _w(tester);
+          await tester.tap(bottomCopyBtn.first, warnIfMissed: false);
+          await _w(tester, seconds: 2);
+
+          expect(find.text('已复制到剪贴板'), findsOneWidget,
+              reason: 'SnackBar should show after bottom bar copy');
+          debugPrint('  ✨ Bottom bar copy SnackBar displayed after reinstall');
+
+          final clipboardData2 = await Clipboard.getData(Clipboard.kTextPlain);
+          expect(clipboardData2, isNotNull);
+          expect(clipboardData2!.text, isNotNull);
+          expect(clipboardData2.text!.isNotEmpty, isTrue);
+          debugPrint('  ✨ Bottom bar clipboard content verified after reinstall');
+        }
+      } else {
+        debugPrint('  ⚠️ No current post available, skipping clipboard test');
+      }
+      debugPrint('PASS: Copy to clipboard tested after reinstall');
+
       final editBtn = find.text('编辑');
       if (editBtn.evaluate().isNotEmpty) {
         await tester.tap(editBtn);
@@ -198,14 +253,7 @@ void main() {
           debugPrint('  Entered instruction: 重新安装后修改文案风格');
         }
 
-        final elements = find.byType(Scaffold).evaluate();
-        PostProvider? provider;
-        for (final el in elements) {
-          try {
-            provider = Provider.of<PostProvider>(el, listen: false);
-            break;
-          } catch (_) {}
-        }
+        final provider = _getPostProvider(tester);
         if (provider != null && provider.currentPost != null) {
           final result = await provider.editPost(
             postId: provider.currentPost!.id,
@@ -261,7 +309,7 @@ void main() {
 Future<String?> _getAuthToken(String username, String password) async {
   try {
     final response = await http.post(
-      Uri.parse('http://10.0.2.2:8000/api/auth/login'),
+      Uri.parse('$baseUrl/api/auth/login'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'username': username, 'password': password}),
     );
@@ -277,7 +325,7 @@ Future<String?> _getAuthToken(String username, String password) async {
 Future<bool> _registerUser(String username, String password) async {
   try {
     final response = await http.post(
-      Uri.parse('http://10.0.2.2:8000/api/auth/register'),
+      Uri.parse('$baseUrl/api/auth/register'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'username': username, 'password': password, 'nickname': 'ReinstallTest'}),
     );
@@ -292,7 +340,7 @@ Future<String?> _createTestPost(String token) async {
     final garmentBytes = await rootBundle.load('test_assets/garment.jpg');
     final streetBytes = await rootBundle.load('test_assets/street_photo.jpg');
 
-    final request = http.MultipartRequest('POST', Uri.parse('http://10.0.2.2:8000/api/posts'));
+    final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/api/posts'));
     request.headers['Authorization'] = 'Bearer $token';
     request.files.add(http.MultipartFile.fromBytes('garment_image', garmentBytes.buffer.asUint8List(), filename: 'garment.jpg', contentType: MediaType('image', 'jpeg')));
     request.files.add(http.MultipartFile.fromBytes('street_photo', streetBytes.buffer.asUint8List(), filename: 'street.jpg', contentType: MediaType('image', 'jpeg')));
@@ -315,7 +363,7 @@ Future<String?> _createTestPost(String token) async {
 Future<bool> _generateCopywriting(String token, String postId) async {
   try {
     final response = await http.post(
-      Uri.parse('http://10.0.2.2:8000/api/ai/copywriting'),
+      Uri.parse('$baseUrl/api/ai/copywriting'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode({'post_id': postId}),
     );
@@ -328,7 +376,7 @@ Future<bool> _generateCopywriting(String token, String postId) async {
 Future<List<Map<String, dynamic>>> _getUserPostsViaApi(String token) async {
   try {
     final response = await http.get(
-      Uri.parse('http://10.0.2.2:8000/api/posts'),
+      Uri.parse('$baseUrl/api/posts'),
       headers: {'Authorization': 'Bearer $token'},
     );
     if (response.statusCode == 200) {
@@ -339,4 +387,30 @@ Future<List<Map<String, dynamic>>> _getUserPostsViaApi(String token) async {
   } catch (_) {
     return [];
   }
+}
+
+PostProvider? _getPostProvider(WidgetTester tester) {
+  final elements = find.byType(Scaffold).evaluate();
+  for (final el in elements) {
+    try {
+      return Provider.of<PostProvider>(el, listen: false);
+    } catch (_) {}
+  }
+  return null;
+}
+
+String _buildExpectedCopyText(String title, String content, List<String> tags) {
+  final buffer = StringBuffer();
+  if (title.isNotEmpty) {
+    buffer.writeln(title);
+    buffer.writeln();
+  }
+  if (content.isNotEmpty) {
+    buffer.writeln(content);
+    buffer.writeln();
+  }
+  if (tags.isNotEmpty) {
+    buffer.write(tags.map((t) => '#$t').join(' '));
+  }
+  return buffer.toString().trim();
 }

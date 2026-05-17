@@ -55,17 +55,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     if (!mounted) return;
 
     if (post != null) {
-      if (provider.error != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(provider.error!),
-            backgroundColor: Colors.orange[800],
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (_) => ChangeNotifierProvider.value(
@@ -74,6 +63,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           ),
         ),
       );
+      provider.generateAllContent(post.id);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -89,8 +79,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   @override
   Widget build(BuildContext context) {
     return LoadingOverlay(
-      isLoading: context.watch<PostProvider>().isGenerating,
-      message: context.watch<PostProvider>().isGenerating ? 'AI正在生成中...\n请稍候' : null,
+      isLoading: context.watch<PostProvider>().isLoading,
+      message: context.watch<PostProvider>().isLoading ? '正在上传...' : null,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('创建笔记'),

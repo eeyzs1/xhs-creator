@@ -45,7 +45,7 @@ class ImageService:
         file_path = os.path.join(dir_path, filename)
         with open(file_path, "wb") as f:
             f.write(image_data)
-        return os.path.join("edited", filename)
+        return os.path.join("edited", filename).replace("\\", "/")
 
     async def edit_image(self, image_path: str, instruction: str) -> str:
         logger.info("Starting image edit")

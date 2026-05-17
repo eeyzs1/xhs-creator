@@ -57,10 +57,32 @@ PostProvider? _getPostProvider(WidgetTester tester) {
   return null;
 }
 
+String get testServerIp => const String.fromEnvironment('TEST_SERVER_IP', defaultValue: '10.0.2.2:8000');
+String get baseUrl => 'http://$testServerIp';
+
+Future<void> _configureServerIp(WidgetTester tester) async {
+  debugPrint('  Configuring server IP: $testServerIp');
+  await tester.tap(find.byIcon(Icons.settings_outlined));
+  await _w(tester, seconds: 2);
+
+  expect(find.text('服务器设置'), findsOneWidget);
+  final ipField = find.byType(TextField);
+  await tester.tap(ipField);
+  await _w(tester);
+  await tester.enterText(ipField, testServerIp);
+  await _w(tester);
+
+  await tester.tap(find.widgetWithText(ElevatedButton, '保存'));
+  await _w(tester, seconds: 2);
+  expect(find.text('服务器地址已保存'), findsOneWidget);
+  debugPrint('  ✨ Server IP saved via UI');
+
+  await tester.tap(find.byIcon(Icons.arrow_back_ios));
+  await _w(tester, seconds: 3);
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
-
-  const testServerIp = '10.0.2.2:8000';
 
   group('Full E2E Flow Test', () {
     late String testUsername;
@@ -77,6 +99,7 @@ void main() {
       debugPrint('\n========================================');
       debugPrint('  Starting Full E2E Flow Test');
       debugPrint('  Test User: $testUsername');
+      debugPrint('  Server IP: $testServerIp');
       debugPrint('========================================\n');
 
       // ===== Step 1: App Launch =====
@@ -126,24 +149,10 @@ void main() {
       expect(onHome, isTrue);
       debugPrint('PASS: Registration successful, on Home Screen');
 
-      // ===== Step 3: Configure Server IP =====
+      // ===== Step 3: Configure Server IP via UI =====
       debugPrint('\n========== Step 3: Server IP Settings ==========');
-      await tester.tap(find.byIcon(Icons.settings_outlined));
-      await _w(tester, seconds: 2);
-
-      expect(find.text('服务器设置'), findsOneWidget);
-      await tester.tap(find.byType(TextField));
-      await _w(tester);
-      await tester.enterText(find.byType(TextField), testServerIp);
-      await _w(tester);
-
-      await tester.tap(find.widgetWithText(ElevatedButton, '保存'));
-      await _w(tester, seconds: 2);
-      expect(find.text('服务器地址已保存'), findsOneWidget);
+      await _configureServerIp(tester);
       debugPrint('PASS: Server IP configured');
-
-      await tester.tap(find.byIcon(Icons.arrow_back_ios));
-      await _w(tester, seconds: 3);
 
       // ===== Step 4: Create Post + TryOn + Copywriting =====
       debugPrint('\n========== Step 4: Create Post + TryOn + Copywriting ==========');
@@ -223,6 +232,62 @@ void main() {
           find.byType(SliverAppBar).evaluate().isNotEmpty;
       expect(hasPreview, isTrue, reason: 'Should be on Post Preview screen');
       debugPrint('PASS: Entered Post Preview from history');
+
+      // ===== Step 6.5: Copy to Clipboard Test =====
+      debugPrint('\n========== Step 6.5: Copy to Clipboard ==========');
+      final copyProvider = _getPostProvider(tester);
+      if (copyProvider != null && copyProvider.currentPost != null) {
+        final copyPost = copyProvider.currentPost!;
+
+        final appBarCopyBtn = find.byIcon(Icons.copy);
+        if (appBarCopyBtn.evaluate().isNotEmpty) {
+          debugPrint('  Tapping AppBar copy button...');
+          await tester.tap(appBarCopyBtn.first);
+          await _w(tester, seconds: 2);
+
+          expect(find.text('已复制到剪贴板'), findsOneWidget,
+              reason: 'SnackBar should show after copy');
+          debugPrint('  ✨ SnackBar "已复制到剪贴板" displayed');
+
+          final clipboardData = await Clipboard.getData(Clipboard.kTextPlain);
+          expect(clipboardData, isNotNull, reason: 'Clipboard should have data');
+          expect(clipboardData!.text, isNotNull, reason: 'Clipboard text should not be null');
+          expect(clipboardData.text!.isNotEmpty, isTrue, reason: 'Clipboard text should not be empty');
+
+          final expectedText = _buildExpectedCopyText(copyPost.title, copyPost.content, copyPost.tags);
+          expect(clipboardData.text, equals(expectedText),
+              reason: 'Clipboard content should match post title+content+tags');
+          debugPrint('  ✨ Clipboard content verified: ${clipboardData.text!.length} chars');
+        }
+
+        await _w(tester, seconds: 2);
+
+        final bottomCopyBtn = find.byIcon(Icons.copy_outlined);
+        if (bottomCopyBtn.evaluate().isNotEmpty) {
+          debugPrint('  Tapping bottom bar copy button...');
+          await tester.ensureVisible(bottomCopyBtn.first);
+          await _w(tester);
+          await tester.tap(bottomCopyBtn.first, warnIfMissed: false);
+          await _w(tester, seconds: 2);
+
+          expect(find.text('已复制到剪贴板'), findsOneWidget,
+              reason: 'SnackBar should show after bottom bar copy');
+          debugPrint('  ✨ Bottom bar copy SnackBar displayed');
+
+          final clipboardData2 = await Clipboard.getData(Clipboard.kTextPlain);
+          expect(clipboardData2, isNotNull);
+          expect(clipboardData2!.text, isNotNull);
+          expect(clipboardData2.text!.isNotEmpty, isTrue);
+
+          final expectedText2 = _buildExpectedCopyText(copyPost.title, copyPost.content, copyPost.tags);
+          expect(clipboardData2.text, equals(expectedText2),
+              reason: 'Bottom bar copy should produce same content');
+          debugPrint('  ✨ Bottom bar clipboard content verified');
+        }
+      } else {
+        debugPrint('  ⚠️ No current post available, skipping clipboard test');
+      }
+      debugPrint('PASS: Copy to clipboard tested');
 
       // ===== Step 7: Edit Text - Submit and Verify =====
       debugPrint('\n========== Step 7: Edit Text (Submit + Verify) ==========');
@@ -391,8 +456,8 @@ void main() {
 
       debugPrint('\n========================================');
       debugPrint('  Part 1 Complete! Now run:');
-      debugPrint('  adb -s emulator-5554 shell pm clear com.example.xhs_creator');
-      debugPrint('  Then re-run this test to verify reinstall persistence.');
+      debugPrint('  adb shell pm clear com.xhscreator.xhs_creator');
+      debugPrint('  Then run reinstall_test to verify reinstall persistence.');
       debugPrint('========================================\n');
     });
   });
@@ -434,7 +499,7 @@ Future<void> _doLogout(WidgetTester tester) async {
 Future<String?> _getAuthToken(String username, String password) async {
   try {
     final response = await http.post(
-      Uri.parse('http://10.0.2.2:8000/api/auth/login'),
+      Uri.parse('$baseUrl/api/auth/login'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'username': username, 'password': password}),
     );
@@ -452,7 +517,7 @@ Future<String?> _getAuthToken(String username, String password) async {
 Future<Map<String, dynamic>?> _getPostViaApi(String token, String postId) async {
   try {
     final response = await http.get(
-      Uri.parse('http://10.0.2.2:8000/api/posts/$postId'),
+      Uri.parse('$baseUrl/api/posts/$postId'),
       headers: {'Authorization': 'Bearer $token'},
     );
     if (response.statusCode == 200) return jsonDecode(response.body) as Map<String, dynamic>;
@@ -469,7 +534,7 @@ Future<String?> _createTestPost(String token) async {
     final garmentBytes = await rootBundle.load('test_assets/garment.jpg');
     final streetBytes = await rootBundle.load('test_assets/street_photo.jpg');
 
-    final request = http.MultipartRequest('POST', Uri.parse('http://10.0.2.2:8000/api/posts'));
+    final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/api/posts'));
     request.headers['Authorization'] = 'Bearer $token';
     request.files.add(http.MultipartFile.fromBytes('garment_image', garmentBytes.buffer.asUint8List(), filename: 'garment.jpg', contentType: MediaType('image', 'jpeg')));
     request.files.add(http.MultipartFile.fromBytes('street_photo', streetBytes.buffer.asUint8List(), filename: 'street.jpg', contentType: MediaType('image', 'jpeg')));
@@ -492,7 +557,7 @@ Future<String?> _createTestPost(String token) async {
 Future<bool> _generateCopywriting(String token, String postId) async {
   try {
     final response = await http.post(
-      Uri.parse('http://10.0.2.2:8000/api/ai/copywriting'),
+      Uri.parse('$baseUrl/api/ai/copywriting'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode({'post_id': postId}),
     );
@@ -509,7 +574,7 @@ Future<bool> _generateCopywriting(String token, String postId) async {
 Future<bool> _generateTryOn(String token, String postId) async {
   try {
     final response = await http.post(
-      Uri.parse('http://10.0.2.2:8000/api/ai/tryon'),
+      Uri.parse('$baseUrl/api/ai/tryon'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode({'post_id': postId, 'garment_type': 'tops'}),
     );
@@ -526,7 +591,7 @@ Future<bool> _generateTryOn(String token, String postId) async {
 Future<bool> _editPostViaApi(String token, String postId, String instruction, String editType) async {
   try {
     final response = await http.post(
-      Uri.parse('http://10.0.2.2:8000/api/ai/edit'),
+      Uri.parse('$baseUrl/api/ai/edit'),
       headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
       body: jsonEncode({'post_id': postId, 'instruction': instruction, 'edit_type': editType}),
     );
@@ -545,7 +610,7 @@ Future<bool> _editPostViaApi(String token, String postId, String instruction, St
 Future<List<Map<String, dynamic>>> _getUserPostsViaApi(String token) async {
   try {
     final response = await http.get(
-      Uri.parse('http://10.0.2.2:8000/api/posts'),
+      Uri.parse('$baseUrl/api/posts'),
       headers: {'Authorization': 'Bearer $token'},
     );
     if (response.statusCode == 200) {
@@ -556,4 +621,20 @@ Future<List<Map<String, dynamic>>> _getUserPostsViaApi(String token) async {
   } catch (_) {
     return [];
   }
+}
+
+String _buildExpectedCopyText(String title, String content, List<String> tags) {
+  final buffer = StringBuffer();
+  if (title.isNotEmpty) {
+    buffer.writeln(title);
+    buffer.writeln();
+  }
+  if (content.isNotEmpty) {
+    buffer.writeln(content);
+    buffer.writeln();
+  }
+  if (tags.isNotEmpty) {
+    buffer.write(tags.map((t) => '#$t').join(' '));
+  }
+  return buffer.toString().trim();
 }

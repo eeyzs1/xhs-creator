@@ -39,7 +39,7 @@ class TryOnService:
         file_path = os.path.join(dir_path, filename)
         with open(file_path, "wb") as f:
             f.write(image_data)
-        return os.path.join("tryon", filename)
+        return os.path.join("tryon", filename).replace("\\", "/")
 
     async def run_tryon(self, human_image_path: str, garment_image_path: str, garment_type: str = "tops") -> str:
         full_garment_path = garment_image_path if os.path.isabs(garment_image_path) else os.path.join(settings.UPLOAD_DIR, garment_image_path)

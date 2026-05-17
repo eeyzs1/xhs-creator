@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../models/post.dart';
@@ -17,11 +18,18 @@ class PostPreviewScreen extends StatefulWidget {
 class _PostPreviewScreenState extends State<PostPreviewScreen> {
   int _currentImageIndex = 0;
   late PageController _pageController;
+  bool _hasTriggeredGeneration = false;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = context.read<PostProvider>();
+      if (provider.isGenerating && !_hasTriggeredGeneration) {
+        _hasTriggeredGeneration = true;
+      }
+    });
   }
 
   @override
@@ -54,7 +62,7 @@ class _PostPreviewScreenState extends State<PostPreviewScreen> {
 
         return LoadingOverlay(
           isLoading: provider.isGenerating,
-          message: provider.isGenerating ? 'AI正在处理中...' : null,
+          message: provider.generatingStep ?? (provider.isGenerating ? 'AI正在处理中...' : null),
           child: Scaffold(
             backgroundColor: Colors.white,
             body: CustomScrollView(
@@ -81,17 +89,9 @@ class _PostPreviewScreenState extends State<PostPreviewScreen> {
                           color: Colors.black.withValues(alpha: 0.3),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.share, size: 18, color: Colors.white),
+                        child: const Icon(Icons.copy, size: 18, color: Colors.white),
                       ),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('分享功能即将上线'),
-                            behavior: SnackBarBehavior.floating,
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
-                      },
+                      onPressed: () => _copyAllContent(post),
                     ),
                   ],
                   flexibleSpace: FlexibleSpaceBar(
@@ -243,7 +243,7 @@ class _PostPreviewScreenState extends State<PostPreviewScreen> {
           ),
           const SizedBox(height: 16),
           if (post.title.isNotEmpty)
-            Text(
+            SelectableText(
               post.title,
               style: const TextStyle(
                 fontSize: 18,
@@ -254,7 +254,7 @@ class _PostPreviewScreenState extends State<PostPreviewScreen> {
             ),
           const SizedBox(height: 12),
           if (post.content.isNotEmpty)
-            Text(
+            SelectableText(
               post.content,
               style: const TextStyle(
                 fontSize: 15,
@@ -323,7 +323,7 @@ class _PostPreviewScreenState extends State<PostPreviewScreen> {
               _buildActionButton(Icons.favorite_border, '喜欢', Colors.grey),
               _buildActionButton(Icons.star_border, '收藏', Colors.grey),
               _buildActionButton(Icons.chat_bubble_outline, '评论', Colors.grey),
-              _buildActionButton(Icons.share_outlined, '分享', Colors.grey),
+              _buildActionButton(Icons.copy_outlined, '复制', Colors.grey, onTap: () => _copyAllContent(post)),
             ],
           ),
         ],
@@ -331,9 +331,9 @@ class _PostPreviewScreenState extends State<PostPreviewScreen> {
     );
   }
 
-  Widget _buildActionButton(IconData icon, String label, Color color) {
+  Widget _buildActionButton(IconData icon, String label, Color color, {VoidCallback? onTap}) {
     return InkWell(
-      onTap: () {},
+      onTap: onTap ?? () {},
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -389,6 +389,33 @@ class _PostPreviewScreenState extends State<PostPreviewScreen> {
         ),
       ),
     );
+  }
+
+  void _copyAllContent(Post? post) {
+    if (post == null) return;
+    final buffer = StringBuffer();
+    if (post.title.isNotEmpty) {
+      buffer.writeln(post.title);
+      buffer.writeln();
+    }
+    if (post.content.isNotEmpty) {
+      buffer.writeln(post.content);
+      buffer.writeln();
+    }
+    if (post.tags.isNotEmpty) {
+      buffer.write(post.tags.map((t) => '#$t').join(' '));
+    }
+    final text = buffer.toString().trim();
+    if (text.isNotEmpty) {
+      Clipboard.setData(ClipboardData(text: text));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('已复制到剪贴板'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 1),
+        ),
+      );
+    }
   }
 
   String _formatDate(DateTime date) {

@@ -34,6 +34,7 @@ class ApiConfig {
   static String imageUrl(String path) {
     if (path.isEmpty) return '';
     if (path.startsWith('http')) return path;
-    return '$baseUrl/uploads/$path';
+    final normalizedPath = path.replaceAll('\\', '/');
+    return '$baseUrl/uploads/$normalizedPath';
   }
 }

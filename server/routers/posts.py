@@ -38,7 +38,7 @@ def save_upload_file(file: UploadFile, subdir: str = "") -> str:
     file_path = os.path.join(dir_path, filename)
     with open(file_path, "wb") as f:
         f.write(content)
-    return os.path.join(subdir, filename) if subdir else filename
+    return (os.path.join(subdir, filename) if subdir else filename).replace("\\", "/")
 
 
 def _delete_file_if_exists(relative_path: str):

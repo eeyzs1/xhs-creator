@@ -255,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _navigateToCreate(BuildContext context) async {
-    final result = await Navigator.of(context).push(
+    await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ChangeNotifierProvider.value(
           value: context.read<PostProvider>(),
@@ -263,7 +263,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
-    if (result == true && context.mounted) {
+    if (context.mounted) {
       context.read<PostProvider>().fetchPosts();
     }
   }

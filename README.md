@@ -88,7 +88,16 @@ App 启动后，在**首页右上角 ⚙️ 设置图标**中配置后端 IP：
 
 ## 测试
 
-项目使用 **Flutter integration_test** 进行端到端自动化测试，覆盖注册、登录、创建帖子、AI 生成、编辑、卸载重装等全流程。
+项目使用 **Flutter integration_test** 进行端到端自动化测试，覆盖注册、登录、创建帖子、AI 生成、编辑、复制粘贴、卸载重装等全流程。
+
+### 服务器 IP 配置
+
+测试通过 `--dart-define=TEST_SERVER_IP=<ip:port>` 参数指定服务器地址，**不硬编码任何 IP**。测试会在 UI 上模拟用户输入来设置服务器 IP。
+
+| 测试场景 | `TEST_SERVER_IP` 值 | 说明 |
+|---------|---------------------|------|
+| Android 模拟器（默认） | `10.0.2.2:8000` | 不传参时的默认值 |
+| 真机 + 同一 WiFi | `你的局域网IP:8000` | 如 `192.168.1.100:8000` |
 
 ### 运行完整测试
 
@@ -104,15 +113,24 @@ powershell -ExecutionPolicy Bypass -File run_e2e_test.ps1
 ### 分步运行
 
 ```bash
-# Part 1: 核心功能测试（注册→创建帖子→编辑文案→编辑图片→退出）
 cd app
+
+# Part 1: 核心功能测试（注册→配置IP→创建帖子→AI生成→复制粘贴→编辑→退出）
+# 模拟器（使用默认 IP 10.0.2.2:8000）：
 flutter test integration_test/full_flow_test.dart -d emulator-5554
 
-# 清除 App 数据（模拟卸载重装）
-adb -s emulator-5554 shell pm clear com.xhscreator.xhs_creator
+# 真机（指定你的局域网 IP）：
+flutter test integration_test/full_flow_test.dart -d <device-id> --dart-define=TEST_SERVER_IP=192.168.1.100:8000
 
-# Part 2: 卸载重装持久性测试（登录→验证数据→编辑→退出）
+# 清除 App 数据（模拟卸载重装）
+adb shell pm clear com.xhscreator.xhs_creator
+
+# Part 2: 卸载重装持久性测试（登录→配置IP→验证数据→复制粘贴→编辑→退出）
+# 模拟器：
 flutter test integration_test/reinstall_test.dart -d emulator-5554
+
+# 真机：
+flutter test integration_test/reinstall_test.dart -d <device-id> --dart-define=TEST_SERVER_IP=192.168.1.100:8000
 ```
 
 ### 测试覆盖
@@ -120,10 +138,11 @@ flutter test integration_test/reinstall_test.dart -d emulator-5554
 | 测试项 | 验证方式 |
 |--------|---------|
 | 用户注册/登录 | UI 交互 + API 验证 |
-| 服务器 IP 配置 | UI SnackBar 确认 |
+| 服务器 IP 配置 | UI 模拟用户输入 + SnackBar 确认 |
 | 创建帖子（上传图片） | API MultipartRequest + 真实图片 |
 | AI 试穿图生成 | API 调用 + tryon_image_path 验证 |
 | AI 文案生成 | API 调用 + 标题/内容验证 |
+| 复制到剪贴板 | AppBar + 底部栏复制按钮 + Clipboard.getData 验证内容 |
 | 编辑文案（提交） | Provider.editPost() + API 验证内容变化 |
 | 编辑图片（提交） | Provider.editPost() + API 验证图片路径更新 |
 | 从历史记录进入编辑 | UI 点击帖子卡片→预览→编辑 |

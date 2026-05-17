@@ -51,11 +51,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 2),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        action: SnackBarAction(
-          label: '返回',
-          textColor: Colors.white,
-          onPressed: () => Navigator.of(context).pop(true),
-        ),
       ),
     );
   }

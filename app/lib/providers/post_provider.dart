@@ -11,12 +11,14 @@ class PostProvider with ChangeNotifier {
   bool _isLoading = false;
   bool _isGenerating = false;
   String? _error;
+  String? _generatingStep;
 
   List<Post> get posts => _posts;
   Post? get currentPost => _currentPost;
   bool get isLoading => _isLoading;
   bool get isGenerating => _isGenerating;
   String? get error => _error;
+  String? get generatingStep => _generatingStep;
 
   Future<void> fetchPosts() async {
     _isLoading = true;
@@ -40,7 +42,7 @@ class PostProvider with ChangeNotifier {
     required String description,
     required String tone,
   }) async {
-    _isGenerating = true;
+    _isLoading = true;
     _error = null;
     notifyListeners();
 
@@ -52,35 +54,43 @@ class PostProvider with ChangeNotifier {
         tone: tone,
       );
       _currentPost = post;
-
-      List<String> errors = [];
-      try {
-        final tryonPost = await _apiService.generateTryOn(post.id);
-        _currentPost = tryonPost;
-      } catch (e) {
-        errors.add('试穿生成失败: $e');
-      }
-
-      try {
-        final copyPost = await _apiService.generateCopywriting(_currentPost?.id ?? post.id);
-        _currentPost = copyPost;
-      } catch (e) {
-        errors.add('文案生成失败: $e');
-      }
-
-      if (errors.isNotEmpty) {
-        _error = errors.join('\n');
-      }
-
-      _isGenerating = false;
+      _isLoading = false;
       notifyListeners();
-      return _currentPost ?? post;
+      return post;
     } catch (e) {
       _error = e.toString();
-      _isGenerating = false;
+      _isLoading = false;
       notifyListeners();
       return null;
     }
+  }
+
+  Future<void> generateAllContent(String postId) async {
+    _isGenerating = true;
+    _error = null;
+    _generatingStep = '正在生成试穿效果...';
+    notifyListeners();
+
+    try {
+      final tryonPost = await _apiService.generateTryOn(postId);
+      _currentPost = tryonPost;
+      _generatingStep = '正在生成文案...';
+      notifyListeners();
+    } catch (e) {
+      _error = '试穿生成失败: $e';
+    }
+
+    try {
+      final copyPost = await _apiService.generateCopywriting(_currentPost?.id ?? postId);
+      _currentPost = copyPost;
+    } catch (e) {
+      final existingError = _error != null ? '${_error!}\n' : '';
+      _error = '$existingError文案生成失败: $e';
+    }
+
+    _isGenerating = false;
+    _generatingStep = null;
+    notifyListeners();
   }
 
   Future<Post?> generateTryOn(String postId) async {
