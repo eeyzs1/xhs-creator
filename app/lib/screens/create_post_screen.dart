@@ -70,6 +70,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           content: Text(provider.error ?? '创建失败，请重试'),
           backgroundColor: XhsTheme.primaryRed,
           behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       );
@@ -361,7 +362,23 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   backgroundColor: _canProceed ? XhsTheme.primaryRed : XhsTheme.divider,
                   foregroundColor: _canProceed ? Colors.white : XhsTheme.textTertiary,
                 ),
-                child: Text(_currentStep < 2 ? '下一步' : '✨ AI生成'),
+                child: context.watch<PostProvider>().isLoading && _currentStep == 2
+                    ? const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Text('上传中...'),
+                        ],
+                      )
+                    : Text(_currentStep < 2 ? '下一步' : '✨ AI生成'),
               ),
             ),
           ],

@@ -67,6 +67,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         content: const Text('已恢复默认地址'),
         backgroundColor: XhsTheme.textSecondary,
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );

@@ -11,7 +11,7 @@ import 'package:xhs_creator/main.dart' as app;
 import 'package:xhs_creator/providers/post_provider.dart';
 import 'package:xhs_creator/widgets/xhs_post_card.dart';
 
-Future<void> _w(WidgetTester tester, {int seconds = 2}) async {
+Future<void> _w(WidgetTester tester, {int seconds = 1}) async {
   await Future<void>.delayed(Duration(seconds: seconds));
   try {
     await tester.pumpAndSettle(const Duration(seconds: 10));

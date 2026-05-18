@@ -51,7 +51,7 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('选择图片失败: $e'), behavior: SnackBarBehavior.floating),
+          SnackBar(content: Text('选择图片失败: $e'), behavior: SnackBarBehavior.floating, duration: const Duration(seconds: 2)),
         );
       }
     }
@@ -75,7 +75,7 @@ class _ImagePickerWidgetState extends State<ImagePickerWidget> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('拍照失败: $e'), behavior: SnackBarBehavior.floating),
+          SnackBar(content: Text('拍照失败: $e'), behavior: SnackBarBehavior.floating, duration: const Duration(seconds: 2)),
         );
       }
     }

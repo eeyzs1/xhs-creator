@@ -56,7 +56,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     if (!mounted) return;
 
-    await _controller.forward();
+    await Future.delayed(const Duration(milliseconds: 800));
 
     if (!mounted) return;
 

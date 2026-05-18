@@ -68,6 +68,7 @@ class _EditPostScreenState extends State<EditPostScreen> {
           content: Text(provider.error ?? '编辑失败，请重试'),
           backgroundColor: Colors.grey[800],
           behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
       );
@@ -246,7 +247,9 @@ class _EditPostScreenState extends State<EditPostScreen> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _instructionController.text.trim().isNotEmpty ? _submitEdit : null,
+                  onPressed: provider.isGenerating
+                      ? null
+                      : (_instructionController.text.trim().isNotEmpty ? _submitEdit : null),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _instructionController.text.trim().isNotEmpty
                         ? XhsTheme.primaryRed
@@ -255,7 +258,23 @@ class _EditPostScreenState extends State<EditPostScreen> {
                         ? Colors.white
                         : XhsTheme.textTertiary,
                   ),
-                  child: const Text('✨ 提交编辑'),
+                  child: provider.isGenerating
+                      ? const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            ),
+                            SizedBox(width: 10),
+                            Text('AI 正在处理...'),
+                          ],
+                        )
+                      : const Text('✨ 提交编辑'),
                 ),
               ),
             ],
