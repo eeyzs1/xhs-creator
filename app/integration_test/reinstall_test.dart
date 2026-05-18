@@ -119,8 +119,13 @@ void main() {
         reason: 'Should be on login screen after app data clear');
     debugPrint('PASS: On Login Screen (no cached credentials after reinstall)');
 
-    // ===== Step 4: Login with Previous Account =====
-    debugPrint('\n========== Step 4: Login with Previous Account ==========');
+    // ===== Step 4: Configure Server IP via UI (on Login Screen) =====
+    debugPrint('\n========== Step 4: Configure Server IP ==========');
+    await _configureServerIp(tester);
+    debugPrint('PASS: Server IP configured');
+
+    // ===== Step 5: Login with Previous Account =====
+    debugPrint('\n========== Step 5: Login with Previous Account ==========');
     final fields = find.byType(TextFormField);
     await tester.tap(fields.at(0));
     await _w(tester);
@@ -141,11 +146,6 @@ void main() {
         find.text('加载失败').evaluate().isNotEmpty;
     expect(onHome, isTrue, reason: 'Should reach home screen after login');
     debugPrint('PASS: Logged in with previous account after reinstall');
-
-    // ===== Step 5: Configure Server IP via UI =====
-    debugPrint('\n========== Step 5: Configure Server IP ==========');
-    await _configureServerIp(tester);
-    debugPrint('PASS: Server IP configured');
 
     // ===== Step 6: Verify Previous Posts Visible =====
     debugPrint('\n========== Step 6: Previous Posts Visible After Reinstall ==========');

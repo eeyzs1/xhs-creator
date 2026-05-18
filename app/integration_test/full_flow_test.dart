@@ -118,8 +118,13 @@ void main() {
       expect(find.text('还没有账号？立即注册'), findsOneWidget);
       debugPrint('PASS: App on Login Screen');
 
-      // ===== Step 2: Register =====
-      debugPrint('\n========== Step 2: Register ==========');
+      // ===== Step 2: Configure Server IP via UI (on Login Screen) =====
+      debugPrint('\n========== Step 2: Server IP Settings ==========');
+      await _configureServerIp(tester);
+      debugPrint('PASS: Server IP configured');
+
+      // ===== Step 3: Register =====
+      debugPrint('\n========== Step 3: Register ==========');
       await tester.tap(find.text('还没有账号？立即注册'));
       await _w(tester, seconds: 2);
 
@@ -148,11 +153,6 @@ void main() {
           find.text('加载失败').evaluate().isNotEmpty;
       expect(onHome, isTrue);
       debugPrint('PASS: Registration successful, on Home Screen');
-
-      // ===== Step 3: Configure Server IP via UI =====
-      debugPrint('\n========== Step 3: Server IP Settings ==========');
-      await _configureServerIp(tester);
-      debugPrint('PASS: Server IP configured');
 
       // ===== Step 4: Create Post + TryOn + Copywriting =====
       debugPrint('\n========== Step 4: Create Post + TryOn + Copywriting ==========');
@@ -213,6 +213,15 @@ void main() {
         await _refreshHome(tester);
         postCards = find.byType(XhsPostCard);
         debugPrint('PASS: Card count after 2nd refresh: ${postCards.evaluate().length}');
+      }
+
+      // Verify first post in list has tryon image
+      final homeProvider = _getPostProvider(tester);
+      if (homeProvider != null && homeProvider.posts.isNotEmpty) {
+        final firstPost = homeProvider.posts.first;
+        expect(firstPost.tryonImagePath, isNotNull, reason: 'First post should have tryon_image_path');
+        expect(firstPost.tryonImagePath!.isNotEmpty, isTrue, reason: 'tryon_image_path should not be empty');
+        debugPrint('  Verified: post thumbnail should be try-on image (${firstPost.tryonImagePath})');
       }
 
       // ===== Step 6: Enter Post from History → Preview =====

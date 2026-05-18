@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:gal/gal.dart';
+import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../models/post.dart';
 import '../providers/post_provider.dart';
@@ -18,7 +20,6 @@ class PostPreviewScreen extends StatefulWidget {
 class _PostPreviewScreenState extends State<PostPreviewScreen> {
   int _currentImageIndex = 0;
   late PageController _pageController;
-  bool _hasTriggeredGeneration = false;
 
   @override
   void initState() {
@@ -26,8 +27,8 @@ class _PostPreviewScreenState extends State<PostPreviewScreen> {
     _pageController = PageController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<PostProvider>();
-      if (provider.isGenerating && !_hasTriggeredGeneration) {
-        _hasTriggeredGeneration = true;
+      if (!provider.isGenerating) {
+        provider.refreshCurrentPost();
       }
     });
   }
@@ -89,9 +90,11 @@ class _PostPreviewScreenState extends State<PostPreviewScreen> {
                           color: Colors.black.withValues(alpha: 0.3),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.copy, size: 18, color: Colors.white),
+                        child: const Icon(Icons.download, size: 18, color: Colors.white),
                       ),
-                      onPressed: () => _copyAllContent(post),
+                      onPressed: images.isNotEmpty && images[_currentImageIndex].isNotEmpty
+                          ? () => _saveCurrentImageToGallery(images[_currentImageIndex])
+                          : null,
                     ),
                   ],
                   flexibleSpace: FlexibleSpaceBar(
@@ -415,6 +418,34 @@ class _PostPreviewScreenState extends State<PostPreviewScreen> {
           duration: Duration(seconds: 1),
         ),
       );
+    }
+  }
+
+  Future<void> _saveCurrentImageToGallery(String imageUrl) async {
+    try {
+      final response = await http.get(Uri.parse(imageUrl));
+      if (response.statusCode == 200) {
+        await Gal.putImageBytes(response.bodyBytes);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('已保存到相册'),
+              behavior: SnackBarBehavior.floating,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('保存失败，请检查权限'),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
     }
   }
 

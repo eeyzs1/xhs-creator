@@ -54,6 +54,7 @@ class PostProvider with ChangeNotifier {
         tone: tone,
       );
       _currentPost = post;
+      _posts.insert(0, post);
       _isLoading = false;
       notifyListeners();
       return post;
@@ -74,6 +75,7 @@ class PostProvider with ChangeNotifier {
     try {
       final tryonPost = await _apiService.generateTryOn(postId);
       _currentPost = tryonPost;
+      _syncPostToPosts(tryonPost);
       _generatingStep = '正在生成文案...';
       notifyListeners();
     } catch (e) {
@@ -83,6 +85,7 @@ class PostProvider with ChangeNotifier {
     try {
       final copyPost = await _apiService.generateCopywriting(_currentPost?.id ?? postId);
       _currentPost = copyPost;
+      _syncPostToPosts(copyPost);
     } catch (e) {
       final existingError = _error != null ? '${_error!}\n' : '';
       _error = '$existingError文案生成失败: $e';
@@ -101,6 +104,7 @@ class PostProvider with ChangeNotifier {
     try {
       final post = await _apiService.generateTryOn(postId);
       _currentPost = post;
+      _syncPostToPosts(post);
       _isGenerating = false;
       notifyListeners();
       return post;
@@ -120,6 +124,7 @@ class PostProvider with ChangeNotifier {
     try {
       final post = await _apiService.generateCopywriting(postId);
       _currentPost = post;
+      _syncPostToPosts(post);
       _isGenerating = false;
       notifyListeners();
       return post;
@@ -147,6 +152,7 @@ class PostProvider with ChangeNotifier {
         editType: editType,
       );
       _currentPost = post;
+      _syncPostToPosts(post);
       _isGenerating = false;
       notifyListeners();
       return post;
@@ -163,9 +169,25 @@ class PostProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> refreshCurrentPost() async {
+    if (_currentPost == null) return;
+    try {
+      final freshPost = await _apiService.getPost(_currentPost!.id);
+      _currentPost = freshPost;
+      notifyListeners();
+    } catch (_) {}
+  }
+
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  void _syncPostToPosts(Post post) {
+    final index = _posts.indexWhere((p) => p.id == post.id);
+    if (index != -1) {
+      _posts[index] = post;
+    }
   }
 
   void clearCurrentPost() {

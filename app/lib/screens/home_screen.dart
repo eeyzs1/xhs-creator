@@ -107,9 +107,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisSpacing: 8,
                 itemCount: provider.posts.length,
                 itemBuilder: (context, index) {
+                  final post = provider.posts[index];
                   return XhsPostCard(
-                    post: provider.posts[index],
-                    onTap: () => _navigateToPreview(context, provider.posts[index]),
+                    key: ValueKey(post.id),
+                    post: post,
+                    onTap: () => _navigateToPreview(context, post),
                   );
                 },
               ),
@@ -264,7 +266,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
     if (context.mounted) {
-      context.read<PostProvider>().fetchPosts();
+      await context.read<PostProvider>().fetchPosts();
     }
   }
 
@@ -280,7 +282,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
     if (result == true && context.mounted) {
-      provider.fetchPosts();
+      await provider.fetchPosts();
     }
   }
 }
